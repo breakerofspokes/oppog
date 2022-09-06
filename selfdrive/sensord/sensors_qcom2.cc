@@ -28,12 +28,40 @@
 
 #define I2C_BUS_IMU 1
 
+constexpr const char* PM_GYRO =  "gyroscope";
+constexpr const char* PM_ACCEL = "accelerometer";
+constexpr const char* PM_MAGN =  "magnetometer";
+constexpr const char* PM_LIGHT = "lightSensor";
+constexpr const char* PM_TEMP =  "temperatureSensor";
+
 ExitHandler do_exit;
 std::mutex pm_mutex;
 
-// filter first values (0.5sec) as those may contain inaccuracies
-uint64_t init_ts = 0;
-constexpr uint64_t init_delay = 500*1e6;
+void send_message(PubMaster& pm, MessageBuilder& msg, int sensor_type) {
+  std::string service;
+  switch(sensor_type) {
+    case SENSOR_TYPE_GYROSCOPE:
+    case SENSOR_TYPE_GYROSCOPE_UNCALIBRATED:
+      service = PM_GYRO; break;
+    case SENSOR_TYPE_ACCELEROMETER:
+      service = PM_ACCEL; break;
+    case SENSOR_TYPE_LIGHT:
+      service = PM_LIGHT; break;
+    case SENSOR_TYPE_MAGNETIC_FIELD:
+    case SENSOR_TYPE_MAGNETIC_FIELD_UNCALIBRATED:
+      service = PM_MAGN; break;
+    case SENSOR_TYPE_AMBIENT_TEMPERATURE:
+      service = PM_TEMP; break;
+    default:
+      // should never happen
+      return;
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(pm_mutex);
+    pm.send(service.c_str(), msg);
+  }
+}
 
 void interrupt_loop(int fd, std::vector<Sensor *>& sensors, PubMaster& pm) {
   struct pollfd fd_list[1] = {0};
@@ -70,15 +98,10 @@ void interrupt_loop(int fd, std::vector<Sensor *>& sensors, PubMaster& pm) {
     int num_events = err / sizeof(*evdata);
     uint64_t ts = evdata[num_events - 1].timestamp - offset;
 
-    MessageBuilder msg;
-    auto orphanage = msg.getOrphanage();
-    std::vector<capnp::Orphan<cereal::SensorEventData>> collected_events;
-    collected_events.reserve(sensors.size());
-
     for (Sensor *sensor : sensors) {
-      auto orphan = orphanage.newOrphan<cereal::SensorEventData>();
-      auto event = orphan.get();
-      if (!sensor->get_event(event)) {
+      MessageBuilder msg;
+      auto sensor_event = msg.initEvent().initSensorEvent();
+      if (!sensor->get_event(sensor_event)) {
         continue;
       }
 
@@ -181,8 +204,7 @@ int sensor_loop() {
     return -1;
   }
 
-  PubMaster pm({"sensorEvents"});
-  init_ts = nanos_since_boot();
+  PubMaster pm({PM_GYRO, PM_ACCEL, PM_TEMP, PM_LIGHT, PM_MAGN});
 
   // thread for reading events via interrupts
   std::vector<Sensor *> lsm_interrupt_sensors = {&lsm6ds3_accel, &lsm6ds3_gyro};
