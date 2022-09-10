@@ -30,7 +30,6 @@
 
 ExitHandler do_exit;
 std::mutex pm_mutex;
-uint64_t last_ts = 0;
 
 // filter first values (0.5sec) as those may contain inaccuracies
 uint64_t init_ts = 0;
@@ -183,6 +182,8 @@ int sensor_loop() {
   }
 
   PubMaster pm({"sensorEvents"});
+  init_ts = nanos_since_boot();
+
   init_ts = nanos_since_boot();
 
   // thread for reading events via interrupts
