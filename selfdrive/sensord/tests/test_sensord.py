@@ -137,6 +137,7 @@ class TestSensord(unittest.TestCase):
     os.system("pkill -f ./_sensord")
     cls.sample_secs = 5
     managed_processes["sensord"].start()
+<<<<<<< HEAD
     time.sleep(2)
     cls.events = read_sensor_events(['accelerometer', 'gyroscope', 'magnetometer',
       'accelerometer2', 'gyroscope2', 'lightSensor', 'temperatureSensor'], cls.sample_secs)
@@ -144,6 +145,10 @@ class TestSensord(unittest.TestCase):
 
   @classmethod
   def tearDownClass(cls):
+=======
+    cls.events = read_sensor_events(['accelerometer', 'accelerometer2',
+      'gyroscope', 'gyroscope2', 'magnetometer', 'lightSensor','temperatureSensor'], 5)
+>>>>>>> 830148523 (adopt sensor tests to bmx channel)
     managed_processes["sensord"].stop()
 
   def tearDown(self):
@@ -163,6 +168,7 @@ class TestSensord(unittest.TestCase):
   def test_lsm6ds3_timing(self):
     # verify measurements are sampled and published at 104Hz
 
+<<<<<<< HEAD
     sensor_t = {
       1: [], # accel
       5: [], # gyro
@@ -183,6 +189,17 @@ class TestSensord(unittest.TestCase):
 
         high_delay_diffs = list(filter(lambda d: d >= 20., tdiffs))
         assert len(high_delay_diffs) < 15, f"Too many large diffs: {high_delay_diffs}"
+=======
+    accel_data = set()
+    for measurement in self.events['accelerometer']:
+      accel_data.add(getattr(measurement, measurement.which()).timestamp)
+    assert len(accel_data) != 0, "No lsm6ds3 accelerometer sensor events"
+
+    gyro_data = set()
+    for measurement in self.events['gyroscope']:
+      gyro_data.add(getattr(measurement, measurement.which()).timestamp)
+    assert len(gyro_data) != 0, "No lsm6ds3 gyroscope sensor events"
+>>>>>>> 830148523 (adopt sensor tests to bmx channel)
 
         # 100-108Hz, expected 104Hz
         avg_diff = sum(tdiffs)/len(tdiffs)
