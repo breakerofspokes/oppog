@@ -207,8 +207,12 @@ def migrate_sensorEvents(lr):
       sensor_service = ''
       if evt.which() == 'acceleration':
         sensor_service = 'accelerometer'
+        if str(evt.source) == 'bmx055':
+          sensor_service = 'accelerometer2'
       elif evt.which() == 'gyro' or evt.which() == 'gyroUncalibrated':
         sensor_service = 'gyroscope'
+        if str(evt.source) == 'bmx055':
+          sensor_service = 'gyroscope2'
       elif evt.which() == 'light' or evt.which() == 'proximity':
         sensor_service = 'lightSensor'
       elif evt.which() == 'magnetic' or evt.which() == 'magneticUncalibrated':
@@ -252,7 +256,9 @@ def regen_segment(lr, frs=None, outdir=FAKEDATA, disable_tqdm=False):
   fake_daemons = {
     'sensord': [
       multiprocessing.Process(target=replay_sensor_event, args=('accelerometer', lr)),
+      multiprocessing.Process(target=replay_sensor_event, args=('accelerometer2', lr)),
       multiprocessing.Process(target=replay_sensor_event, args=('gyroscope', lr)),
+      multiprocessing.Process(target=replay_sensor_event, args=('gyroscope2', lr)),
       multiprocessing.Process(target=replay_sensor_event, args=('magnetometer', lr)),
       multiprocessing.Process(target=replay_sensor_event, args=('lightSensor', lr)),
       multiprocessing.Process(target=replay_sensor_event, args=('temperatureSensor', lr)),
@@ -291,7 +297,7 @@ def regen_segment(lr, frs=None, outdir=FAKEDATA, disable_tqdm=False):
       for d, procs in fake_daemons.items():
         for p in procs:
           if not p.is_alive() and d != 'sensord':
-            # not all sensors must have events (temperatureSensor)
+            # not all sensors must have events (temperatureSensor, bmx sockets)
             raise Exception(f"{d}'s {p.name} died")
       time.sleep(1)
   finally:
